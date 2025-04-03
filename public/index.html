@@ -1,0 +1,63 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NSL Network Monitor Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>NSL Network Monitor Dashboard</h1>
+  <canvas id="trafficChart"></canvas>
+  <p id="predictionResult">Prediction: Waiting...</p>
+
+  <script>
+    const ws = new WebSocket('ws://127.0.0.1:8080');
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const trafficChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Src Bytes (Bytes/s)',
+          borderColor: 'blue',
+          data: []
+        }, {
+          label: 'Dst Bytes (Bytes/s)',
+          borderColor: 'green',
+          data: []
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { title: { display: true, text: 'Bytes/s' } }
+        }
+      }
+    });
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const timeLabel = new Date().toLocaleTimeString();
+
+      // Update chart with new src_bytes and dst_bytes values
+      trafficChart.data.labels.push(timeLabel);
+      trafficChart.data.datasets[0].data.push(data.src_bytes);
+      trafficChart.data.datasets[1].data.push(data.dst_bytes);
+
+      // Keep only the latest 10 data points
+      if (trafficChart.data.labels.length > 10) {
+        trafficChart.data.labels.shift();
+        trafficChart.data.datasets[0].data.shift();
+        trafficChart.data.datasets[1].data.shift();
+      }
+
+      // Update prediction display
+      document.getElementById('predictionResult').innerText = `Prediction: ${data.prediction}`;
+      trafficChart.update();
+    };
+  </script>
+</body>
+</html>
